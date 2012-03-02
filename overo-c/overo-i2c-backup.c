@@ -34,7 +34,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	//copy stuff to send into buffer
 	if (argc > 1) {
 		memset(buff, 0, sizeof(buff));
 		strncpy(buff, argv[1], ARDUINO_I2C_BUFFER_LIMIT);
@@ -60,6 +59,7 @@ int main(int argc, char **argv)
 	
 	//read	
 	rcvd = read(fh, buff, sent);
+
 	while (rcvd < sent) {
 		usleep(50000);	
 		len = read(fh, buff + rcvd, sent - rcvd);
@@ -82,6 +82,11 @@ int main(int argc, char **argv)
 	return 0;
 }
 
+int i2cInit(){
+  
+  
+}
+
 int i2cSend(char* buffer){
   
 }
@@ -90,24 +95,12 @@ int i2cRecive(char* buffer){
   
 }
 
-int i2cSetAddress(char* address){
+int i2cBegin(char* address){
   
   
 }
 
-int Overoi2c(){
-  
-  //open device
-  fh = open("/dev/i2c-3", O_RDWR);
-
-	if (fh < 0) {
-		perror("open");
-		return 1;
-	}
-  
-}
-
-int ~Overoi2c(char* address){
+int i2cEnd(char* address){
   
   
 }
