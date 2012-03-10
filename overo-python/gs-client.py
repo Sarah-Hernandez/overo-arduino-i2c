@@ -1,5 +1,6 @@
 import socket
 import Tkinter
+import platform
 
 LEFT_COMMAND = '40'
 RIGHT_COMMAND = '41'
@@ -99,11 +100,16 @@ class gs_gui(Tkinter.Tk):
     self.bind("<Down>",self.OnPressBack)
     self.bind("<Left>",self.OnPressLeft)
     self.bind("<Right>",self.OnPressRight)
-    self.bind("<XF86Back>",self.OnMinus)
-    self.bind("<XF86Forward>",self.OnPlus)
-    self.bind("<XF86Launch1>",self.LiftOff)
-    self.bind("<XF86Launch2>",self.Land)
     self.bind("<space>",self.KillAll)
+    
+    try:
+      self.bind("<XF86Back>",self.OnMinus)
+      self.bind("<XF86Forward>",self.OnPlus)
+      self.bind("<XF86Launch1>",self.LiftOff)
+      self.bind("<XF86Launch2>",self.Land)
+    except Exception:
+      print "your platform doesn support XF86 key bindings"
+      pass
     
     self.bind("<KeyRelease-Up>",self.KillAll)
     self.bind("<KeyRelease-Down>",self.KillAll)
