@@ -61,9 +61,9 @@ class gs_gui(Tkinter.Tk):
     buttonBack = Tkinter.Button(self,text="   Up    ",command=self.OnBackClick)
     buttonLeft = Tkinter.Button(self,text=" <-Left  ",command=self.OnLeftClick)
     buttonRight = Tkinter.Button(self,text="Right->  ",command=self.OnRightClick)
-    buttonLiftOff = Tkinter.Button(self,text=" Hover ",command=self.LiftOff)
-    buttonLand = Tkinter.Button(self,text="  Manual   ",command=self.Land)
-    buttonKill = Tkinter.Button(self,text=" KillAll ",command=self.KillAll)
+    buttonLiftOff = Tkinter.Button(self,text=" Hover ",command=self.OnLiftOffClick)
+    buttonLand = Tkinter.Button(self,text="  Manual   ",command=self.OnLandClick)
+    buttonKill = Tkinter.Button(self,text=" KillAll ",command=self.OnKillAllClick)
     
     #add labels
     self.labelVariable = Tkinter.StringVar()
@@ -167,21 +167,33 @@ class gs_gui(Tkinter.Tk):
     self.modeVariable.set("Manual")
     self.sendCMD(MANUAL_MODE)
     
+  def OnLiftOffClick(self):
+    #self.sendCMD(MOTOR_LEFT_RIGHT)
+    self.LiftOff(self)
+    
+  def OnLandClick(self):
+    #self.sendCMD(MOTOR_LEFT_RIGHT)
+    self.Land(self)
+    
+  def OnKillAllClick(self):
+    #self.sendCMD(MOTOR_LEFT_RIGHT)
+    self.KillAll(self)
+  
   def OnFwClick(self):
     #self.sendCMD(MOTOR_LEFT_RIGHT)
-    self.OnPressFw(self,event)
+    self.OnPressFw(self)
 
   def OnBackClick(self):
     #self.sendCMD(MOTOR_BOTTOM)
-    self.OnPressBack(self,event)
+    self.OnPressBack(self)
     
   def OnLeftClick(self):
     #self.sendCMD(MOTOR_RIGHT)
-    self.OnPressLeft(self,event)
+    self.OnPressLeft(self)
     
   def OnRightClick(self):
     #self.sendCMD(MOTOR_LEFT)    
-    self.OnPressRight(self,event)
+    self.OnPressRight(self)
     
   def OnButtonClick(self):
     self.PWM = self.entryVar.get()
@@ -191,15 +203,13 @@ class gs_gui(Tkinter.Tk):
       self.sendCMD(INIT_PWM)
     
   def KillAll(self, event):
-    self.afterId = self.after_idle( self.process_release, event )
-    #if(event.keysym == self.last_key):
-      #print event.keysym+" is still pressed ignore release event"
-      #self.last_key = 't'
-    #else:
-      #self.sendCMD(KILL_MOTORS)
+    self.afterId = self.after_idle( self.process_release, event)
       
   def process_release(self, event):
-    print 'key release %s' % event.time
+    if hasattr(event,'time'):
+      print 'key release %s' % event.time
+    else:
+      print 'click event'
     self.afterId = None
     self.sendCMD(KILL_MOTORS)
    
@@ -212,15 +222,15 @@ class gs_gui(Tkinter.Tk):
       self.byteSent = self.byteSent + 1
       print "Sent Total: {} Msgs".format(self.byteSent)
       self.last_cmd = cmd1
-    #else:
-      #print "last_command : "+self.last_cmd
+    else:
+      print "last_command : "+self.last_cmd
    
   def OnPressFw(self,event):
     self.sendCMD(MOTOR_LEFT_RIGHT)
     if self.afterId != None:
        self.after_cancel( self.afterId )
        self.afterId = None
-    elif event != None:
+    elif hasattr(event,'time'):
        print 'FW pressed %s' % event.time
     
   def OnPressBack(self,event):
@@ -228,7 +238,7 @@ class gs_gui(Tkinter.Tk):
     if self.afterId != None:
        self.after_cancel( self.afterId )
        self.afterId = None
-    elif event != None:
+    elif hasattr(event,'time'):
        print 'Up pressed %s' % event.time
     
   def OnPressLeft(self,event):
@@ -236,7 +246,7 @@ class gs_gui(Tkinter.Tk):
     if self.afterId != None:
        self.after_cancel( self.afterId )
        self.afterId = None
-    elif event != None:
+    elif hasattr(event,'time'):
        print 'Left pressed %s' % event.time
 
   def OnPressRight(self,event):
@@ -244,7 +254,7 @@ class gs_gui(Tkinter.Tk):
     if self.afterId != None:
        self.after_cancel( self.afterId )
        self.afterId = None
-    elif event != None:
+    elif hasattr(event,'time'):
        print 'Right pressed %s' % event.time
     
   def OnPressEnter(self,event):
