@@ -12,6 +12,9 @@ MOTOR_BOTTOM = '35'
 MOTOR_LEFT_RIGHT = '36'
 KILL_MOTORS = '37'
 
+LIFT_OFF = '38'
+MANUAL_MODE = '39'
+
 INIT_PWM = '50'
 
 AUTOPILOT_IP = "192.168.23.3"
@@ -54,14 +57,20 @@ class gs_gui(Tkinter.Tk):
     #it will not be changed
     button = Tkinter.Button(self,text="Send",command=self.OnButtonClick)
     buttonFw = Tkinter.Button(self,text=" Forward ",command=self.OnFwClick)
-    buttonBack = Tkinter.Button(self,text="  Up  ",command=self.OnBackClick)
-    buttonLeft = Tkinter.Button(self,text="  <-Left  ",command=self.OnLeftClick)
+    buttonBack = Tkinter.Button(self,text="   Up    ",command=self.OnBackClick)
+    buttonLeft = Tkinter.Button(self,text=" <-Left  ",command=self.OnLeftClick)
     buttonRight = Tkinter.Button(self,text="Right->  ",command=self.OnRightClick)
-
+    buttonLiftOff = Tkinter.Button(self,text=" Hover ",command=self.LiftOff)
+    buttonLand = Tkinter.Button(self,text="  Manual   ",command=self.Land)
+    buttonKill = Tkinter.Button(self,text=" KillAll ",command=self.KillAll)
+    
     #add labels
     self.labelVariable = Tkinter.StringVar()
     label = Tkinter.Label(self, textvariable = self.labelVariable, anchor='w', fg="black", bg="white")
     self.labelVariable.set("Zepplin Ground Station")
+    self.modeVariable = Tkinter.StringVar()
+    mode = Tkinter.Label(self, textvariable = self.labelVariable, anchor='w', fg="black", bg="white")
+    self.modeVariable.set("Zepplin Ground Station")
     
     #Add things to the layout manager
     #sticky EW (East West) sticks it to the vertical edges 
@@ -71,14 +80,17 @@ class gs_gui(Tkinter.Tk):
     button.grid(column=1,row=0,columnspan=1,sticky='EW')
     label.grid(column=0,row=1,columnspan=2,sticky='EW')
     buttonFw.grid(column=0,row=2,columnspan=2,sticky='EW')
-    buttonBack.grid(column=0,row=4,columnspan=2,sticky='EW')
     buttonLeft.grid(column=0,row=3,columnspan=1,sticky='EW')
     buttonRight.grid(column=1,row=3,columnspan=1,sticky='EW')
+    buttonBack.grid(column=0,row=4,columnspan=2,sticky='EW')
+    buttonLiftOff.grid(column=0,row=5,columnspan=2,sticky='EW')
+    buttonLand.grid(column=0,row=6,columnspan=2,sticky='EW')
+    buttonKill.grid(column=0,row=7,columnspan=2,sticky='EW')
     
     #Tell the layout manager to resize columns when the window
     #is resized
     self.grid_columnconfigure(0,weight=1)
-    self.grid_columnconfigure(1,weight=2)
+    self.grid_columnconfigure(1,weight=1)
     self.resizable(True,False)
     
     #add events
@@ -89,6 +101,9 @@ class gs_gui(Tkinter.Tk):
     self.bind("<Right>",self.OnPressRight)
     self.bind("<XF86Back>",self.OnMinus)
     self.bind("<XF86Forward>",self.OnPlus)
+    self.bind("<XF86Launch1>",self.LiftOff)
+    self.bind("<XF86Launch2>",self.Land)
+    self.bind("<space>",self.KillAll)
     
     self.bind("<KeyRelease-Up>",self.KillAll)
     self.bind("<KeyRelease-Down>",self.KillAll)
@@ -105,9 +120,11 @@ class gs_gui(Tkinter.Tk):
     # SOCK_DGRAM is the socket type to use for UDP sockets
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     self.byteSent = 0
-    self.last_cmd = '4'
-    self.last_key = 't'
+    self.last_cmd = 'BRRR'
     self.afterId = None
+    #reset controller
+    self.sendCMD(KILL_MOTORS)
+    self.sendCMD(INIT_PWM)
 
   def OnMinus(self,event):
     slider = self.entry.get()
@@ -117,6 +134,11 @@ class gs_gui(Tkinter.Tk):
     #slider = slider%50 + 50
     self.entry.set(slider)
     self.sendCMD(str(slider));
+    if self.afterId != None:
+       self.after_cancel( self.afterId )
+       self.afterId = None
+    elif event != None:
+       print '- pressed %s' % event.time
     
   def OnPlus(self,event):
     slider = self.entry.get()
@@ -125,18 +147,35 @@ class gs_gui(Tkinter.Tk):
       slider = 100
     self.entry.set(slider)
     self.sendCMD(str(slider));
+    if self.afterId != None:
+       self.after_cancel( self.afterId )
+       self.afterId = None
+    elif event != None:
+       print '+ pressed %s' % event.time    
+    
+  def LiftOff(self,event):
+    self.modeVariable.set("Hover")
+    self.sendCMD(LIFT_OFF)
+    
+  def Land(self,event):
+    self.modeVariable.set("Manual")
+    self.sendCMD(MANUAL_MODE)
     
   def OnFwClick(self):
-    self.sendCMD(MOTOR_LEFT_RIGHT)
+    #self.sendCMD(MOTOR_LEFT_RIGHT)
+    self.OnPressFw(self,event)
 
   def OnBackClick(self):
-    self.sendCMD(MOTOR_BOTTOM)
+    #self.sendCMD(MOTOR_BOTTOM)
+    self.OnPressBack(self,event)
     
   def OnLeftClick(self):
-    self.sendCMD(MOTOR_RIGHT)
+    #self.sendCMD(MOTOR_RIGHT)
+    self.OnPressLeft(self,event)
     
   def OnRightClick(self):
-    self.sendCMD(MOTOR_LEFT)    
+    #self.sendCMD(MOTOR_LEFT)    
+    self.OnPressRight(self,event)
     
   def OnButtonClick(self):
     self.PWM = self.entryVar.get()
@@ -171,44 +210,39 @@ class gs_gui(Tkinter.Tk):
       #print "last_command : "+self.last_cmd
    
   def OnPressFw(self,event):
-    self.OnFwClick()
-    self.last_key = event.keysym
+    self.sendCMD(MOTOR_LEFT_RIGHT)
     if self.afterId != None:
        self.after_cancel( self.afterId )
        self.afterId = None
-    else:
-       print 'key pressed %s' % event.time
+    elif event != None:
+       print 'FW pressed %s' % event.time
     
   def OnPressBack(self,event):
-    self.OnBackClick()
-    self.last_key = event.keysym
+    self.sendCMD(MOTOR_BOTTOM)
     if self.afterId != None:
        self.after_cancel( self.afterId )
        self.afterId = None
-    else:
-       print 'key pressed %s' % event.time
+    elif event != None:
+       print 'Up pressed %s' % event.time
     
   def OnPressLeft(self,event):
-    self.OnLeftClick()
-    self.last_key = event.keysym
+    self.sendCMD(MOTOR_LEFT)
     if self.afterId != None:
        self.after_cancel( self.afterId )
        self.afterId = None
-    else:
-       print 'key pressed %s' % event.time
+    elif event != None:
+       print 'Left pressed %s' % event.time
 
   def OnPressRight(self,event):
-    self.OnRightClick()
-    self.last_key = event.keysym
+    self.sendCMD(MOTOR_RIGHT)
     if self.afterId != None:
        self.after_cancel( self.afterId )
        self.afterId = None
-    else:
-       print 'key pressed %s' % event.time
+    elif event != None:
+       print 'Right pressed %s' % event.time
     
   def OnPressEnter(self,event):
     self.OnButtonClick()
-    self.last_key = event.keysym
     
 if __name__ == "__main__":
     app = gs_gui(None)

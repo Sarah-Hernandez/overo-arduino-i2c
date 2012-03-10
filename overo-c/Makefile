@@ -1,7 +1,7 @@
 # Makefile for the overo-arduino-i2c test program
 
 ifeq ($(strip $(OETMP)),)
-	OETMP = $(HOME)/overo-oe/tmp 
+	OETMP = $(HOME)/overo-oe/tmp
 endif
 
 
@@ -14,10 +14,10 @@ CFLAGS = -Wall
 LIBDIR = $(STAGEDIR)/lib
 INCDIR = $(STAGEDIR)/include
 
-TARGET = overo-i2c 
+TARGET = overo-i2c-imu 
 
-$(TARGET) : overo-i2c.c
-	$(CC) $(CFLAGS) -I $(INCDIR) -L $(LIBDIR) overo-i2c.c -o $(TARGET)
+$(TARGET) : overo-i2c-imu.c
+	$(CC) $(CFLAGS) -I $(INCDIR) -L $(LIBDIR) overo-i2c-imu.c -o $(TARGET)
 
 install:
 	scp $(TARGET) root@192.168.10.106:/home/root
