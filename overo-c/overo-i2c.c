@@ -2,112 +2,123 @@
   Simple I2C communication test with an Arduino as the slave device.
 */
 
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <linux/i2c-dev.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-#include <errno.h>
+#include "overo-i2c.h"
 
-#define ARDUINO_I2C_ADDRESS 0x10
-#define ARDUINO_I2C_BUFFER_LIMIT 32
- 
-int main(int argc, char **argv)
-{
-	int fh;
-	char buff[ARDUINO_I2C_BUFFER_LIMIT + 4];
-	int len, sent, rcvd;
-
-	//open device
-	fh = open("/dev/i2c-3", O_RDWR);
-
-	if (fh < 0) {
-		perror("open");
-		return 1;
-	}
-
-	//set address
-	if (ioctl(fh, I2C_SLAVE, ARDUINO_I2C_ADDRESS) < 0) {
-		perror("ioctl");
-		return 1;
-	}
-
-	//copy stuff to send into buffer
-	if (argc > 1) {
-		memset(buff, 0, sizeof(buff));
-		strncpy(buff, argv[1], ARDUINO_I2C_BUFFER_LIMIT);
-	}
-	else {
-		strcpy(buff, "hello");
-	}
-
-	len = strlen(buff);
-
-	//send
-	sent = write(fh, buff, len);
-
-	if (sent != len) {
-		perror("write");
-		return 1;
-	}
-
-	printf("Sent: %s\n", buff);
-
-	//clear buffer
-	memset(buff, 0, sizeof(buff));
-	
-	//read	
-	rcvd = read(fh, buff, sent);
-	while (rcvd < sent) {
-		usleep(50000);	
-		len = read(fh, buff + rcvd, sent - rcvd);
-
-		if (len <= 0) {
-			if (len < 0)
-				perror("read");
-
-			break;
-		}
-
-		rcvd += len;
-	}
-
-	if (rcvd > 0)
-		printf("Received: %s\n", buff);
-
-	close(fh);
-
-	return 0;
+void i2cSendByte(int msg){
+  
+  printf("sending 0x%X\n", msg);  
+    //send
+    i2c_data.sent = write(i2c_data.fh, &msg, 1);
+    
+    //verify sent
+    if (i2c_data.sent != 1) {
+      perror("write");
+      //printf("& the buffer is messed up\n");
+    }
 }
 
-int i2cSend(char* buffer){
+void i2cSend(char* msg){
   
+  //printf("sending %s\n", msg);
+  
+  //copy stuff to send into buffer
+  if (sizeof(msg) > 1) {
+
+      memset(i2c_data.buff, 0, sizeof(i2c_data.buff));
+      strncpy(i2c_data.buff, msg, ARDUINO_I2C_BUFFER_LIMIT);
+  }
+  else {
+    strcpy(i2c_data.buff,"hello");
+  }
+  
+  //send
+  i2c_data.len = strlen(i2c_data.buff);
+  i2c_data.sent = write(i2c_data.fh, i2c_data.buff, i2c_data.len);
+
+  if (i2c_data.sent != i2c_data.len) {
+    perror("write");
+    //return 1;
+  }
+  //printf("Sent: %s\n", i2c_data.buff);
 }
 
-int i2cRecive(char* buffer){
+void i2cRecive(){
+
+  //clear buffer
+  memset(i2c_data.buff, 0, sizeof(i2c_data.buff));
   
+  //read	
+  i2c_data.rcvd = read(i2c_data.fh, i2c_data.buff, i2c_data.sent);
+  while (i2c_data.rcvd < i2c_data.sent) {
+    
+    usleep(50000);	
+    i2c_data.len = read(i2c_data.fh, i2c_data.buff + i2c_data.rcvd, i2c_data.sent - i2c_data.rcvd);
+
+    if (i2c_data.len <= 0) {
+      if (i2c_data.len < 0)
+	perror("read");
+      break;
+    }
+    i2c_data.rcvd += i2c_data.len;
+
+  }
+
+  if (i2c_data.rcvd > 0){
+    //printf("Received: %s\n", i2c_data.buff);
+  }
+    
 }
 
-int i2cSetAddress(char* address){
+void i2cReciveBytes(int bytes){
+
+  //clear buffer
+  memset(i2c_data.buff, 0, sizeof(i2c_data.buff));
   
+  //read	
+  i2c_data.rcvd = read(i2c_data.fh, i2c_data.buff, bytes);
   
+  while (i2c_data.rcvd < bytes) {
+    
+    usleep(5000);	
+    i2c_data.len = read(i2c_data.fh, i2c_data.buff + i2c_data.rcvd, bytes - i2c_data.rcvd);
+
+    if (i2c_data.len <= 0) {
+      if (i2c_data.len < 0)
+	perror("read");
+      break;
+    }
+    
+    i2c_data.rcvd += i2c_data.len;
+  }
+
+  if (i2c_data.rcvd > 0){
+    //printf("Received: %s\n", i2c_data.buff);
+  }
+  else{
+    printf("ERR!: Recived Error");
+  }
 }
 
-int Overoi2c(){
+void i2cSetAddress(int address){
+  
+  //set address
+  if (ioctl(i2c_data.fh, I2C_SLAVE, address) < 0) {
+    perror("ioctl");
+   // return 1;
+  }
+}
+
+void i2cInit(char* i2c_device){
   
   //open device
-  fh = open("/dev/i2c-3", O_RDWR);
-
-	if (fh < 0) {
-		perror("open");
-		return 1;
-	}
+  i2c_data.fh = open(i2c_device, O_RDWR);
+  if (i2c_data.fh < 0) {
+    perror("open");
+  }
   
 }
 
-int ~Overoi2c(char* address){
-  
-  
+void i2cDestroy(){
+  close(i2c_data.fh);
 }
 
