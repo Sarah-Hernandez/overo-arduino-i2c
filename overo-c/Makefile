@@ -20,6 +20,9 @@ TARGET = i2c_imu_read
 $(TARGET) :
 	$(CC) $(CFLAGS) -I $(INCDIR) -I . -L $(LIBDIR) sensors.c overo-i2c.c -o $(TARGET)
 
+test:
+	gcc sensors.c overo-i2c.c -o test
+
 install:
 	scp $(TARGET) root@192.168.23.3:/home/root
 
