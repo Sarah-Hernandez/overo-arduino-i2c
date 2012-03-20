@@ -15,9 +15,9 @@ CFLAGS = -Wall
 LIBDIR = $(STAGEDIR)/lib
 INCDIR = $(STAGEDIR)/include
 
-TARGET = sensors
+TARGET = i2c_imu_read
 
-$(TARGET) : sensors
+$(TARGET) :
 	$(CC) $(CFLAGS) -I $(INCDIR) -I . -L $(LIBDIR) sensors.c overo-i2c.c -o $(TARGET)
 
 install:

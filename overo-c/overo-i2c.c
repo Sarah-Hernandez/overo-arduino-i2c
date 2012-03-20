@@ -4,11 +4,20 @@
 
 #include "overo-i2c.h"
 
-void i2cSendByte(int msg){
+typedef struct i2c_data_s{
   
-  printf("sending 0x%X\n", msg);  
+  int fh;
+  char buff[ARDUINO_I2C_BUFFER_LIMIT + 4];
+  int len, sent, rcvd;
+
+} i2c_data_t;
+
+static i2c_data_t i2c_data;
+
+void i2cWriteByte(unsigned char byte){
+  
     //send
-    i2c_data.sent = write(i2c_data.fh, &msg, 1);
+    i2c_data.sent = write(i2c_data.fh, &byte, 1);
     
     //verify sent
     if (i2c_data.sent != 1) {
@@ -17,56 +26,49 @@ void i2cSendByte(int msg){
     }
 }
 
-void i2cSend(char* msg){
+char i2cReadByte(unsigned char reg){
   
-  //printf("sending %s\n", msg);
+  unsigned char buff;
   
-  //copy stuff to send into buffer
-  if (sizeof(msg) > 1) {
-
-      memset(i2c_data.buff, 0, sizeof(i2c_data.buff));
-      strncpy(i2c_data.buff, msg, ARDUINO_I2C_BUFFER_LIMIT);
-  }
-  else {
-    strcpy(i2c_data.buff,"hello");
-  }
-  
-  //send
-  i2c_data.len = strlen(i2c_data.buff);
-  i2c_data.sent = write(i2c_data.fh, i2c_data.buff, i2c_data.len);
-
-  if (i2c_data.sent != i2c_data.len) {
-    perror("write");
-    //return 1;
-  }
-  //printf("Sent: %s\n", i2c_data.buff);
-}
-
-void i2cRecive(){
+  //select register
+  i2cWriteByte(reg);
 
   //clear buffer
-  memset(i2c_data.buff, 0, sizeof(i2c_data.buff));
+  memset(&buff, 0, sizeof(buff));
   
-  //read	
-  i2c_data.rcvd = read(i2c_data.fh, i2c_data.buff, i2c_data.sent);
-  while (i2c_data.rcvd < i2c_data.sent) {
-    
-    usleep(50000);	
-    i2c_data.len = read(i2c_data.fh, i2c_data.buff + i2c_data.rcvd, i2c_data.sent - i2c_data.rcvd);
+  //read one byte
+  i2c_data.rcvd = read(i2c_data.fh, &buff, 1);
 
-    if (i2c_data.len <= 0) {
-      if (i2c_data.len < 0)
-	perror("read");
-      break;
-    }
-    i2c_data.rcvd += i2c_data.len;
-
+  if (i2c_data.rcvd != 1){
+    printf("ERR!: Recived Error");
+    return 0;
   }
+  
+  return buff;
+}
 
-  if (i2c_data.rcvd > 0){
-    //printf("Received: %s\n", i2c_data.buff);
+void i2cSetAddress(int address){
+  
+  //set address
+  if (ioctl(i2c_data.fh, I2C_SLAVE, address) < 0) {
+    perror("ioctl");
+   // return 1;
   }
-    
+  
+}
+
+void i2cInit(char* i2c_device){
+  
+  //open device
+  i2c_data.fh = open(i2c_device, O_RDWR);
+  if (i2c_data.fh < 0) {
+    perror("open");
+  }
+  
+}
+
+void i2cDestroy(){
+  close(i2c_data.fh);
 }
 
 void i2cReciveBytes(int bytes){
@@ -91,34 +93,58 @@ void i2cReciveBytes(int bytes){
     i2c_data.rcvd += i2c_data.len;
   }
 
-  if (i2c_data.rcvd > 0){
-    //printf("Received: %s\n", i2c_data.buff);
-  }
-  else{
+  if (i2c_data.rcvd <= bytes){
     printf("ERR!: Recived Error");
   }
+  
 }
 
-void i2cSetAddress(int address){
+void i2cSend(char* msg){
   
-  //set address
-  if (ioctl(i2c_data.fh, I2C_SLAVE, address) < 0) {
-    perror("ioctl");
-   // return 1;
+  //copy stuff to send into buffer
+  if (sizeof(msg) > 1) {
+
+      memset(i2c_data.buff, 0, sizeof(i2c_data.buff));
+      strncpy(i2c_data.buff, msg, ARDUINO_I2C_BUFFER_LIMIT);
   }
-}
-
-void i2cInit(char* i2c_device){
-  
-  //open device
-  i2c_data.fh = open(i2c_device, O_RDWR);
-  if (i2c_data.fh < 0) {
-    perror("open");
+  else {
+    strcpy(i2c_data.buff,"hello");
   }
   
+  //send
+  i2c_data.len = strlen(i2c_data.buff);
+  i2c_data.sent = write(i2c_data.fh, i2c_data.buff, i2c_data.len);
+
+  if (i2c_data.sent != i2c_data.len) {
+    perror("write");
+    //return 1;
+  }
+
 }
 
-void i2cDestroy(){
-  close(i2c_data.fh);
-}
+void i2cRecive(){
 
+  //clear buffer
+  memset(i2c_data.buff, 0, sizeof(i2c_data.buff));
+  
+  //read	
+  i2c_data.rcvd = read(i2c_data.fh, i2c_data.buff, i2c_data.sent);
+  while (i2c_data.rcvd < i2c_data.sent) {
+    
+    usleep(50000);	
+    i2c_data.len = read(i2c_data.fh, i2c_data.buff + i2c_data.rcvd, i2c_data.sent - i2c_data.rcvd);
+
+    if (i2c_data.len <= 0) {
+      if (i2c_data.len < 0)
+	perror("read");
+      break;
+    }
+    
+    i2c_data.rcvd += i2c_data.len;
+  }
+  
+  if (i2c_data.rcvd <= 0){
+    printf("ERR!: Recived Error");
+  }
+  
+}

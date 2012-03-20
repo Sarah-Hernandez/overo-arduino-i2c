@@ -2,42 +2,39 @@
   Simple I2C communication test with an Arduino as the slave device.
 */
 
+/* based on : http://elinux.org/ECE597_Project_Adding_Sense_to_Beagle#Detail_of_ADXL345.c */
+
 #include "overo-i2c.h"
-
-// Sensor I2C addresses
-#define ACCEL_ADDRESS ((int) 0x53) // 0x53 = 0xA6 / 2
-#define MAGN_ADDRESS  ((int) 0x1E) // 0x1E = 0x3C / 2
-#define GYRO_ADDRESS  ((int) 0x68) // 0x68 = 0xD0 / 2
-
-float gyro[3];
-float accel[3];
-float magnetom[3];
+#include "sensors.h"
 
 // Reads x, y and z gyroscope registers
 void Read_Gyro()
 {
-  int i = 0;
   char buff[6];
+  unsigned char reg = GYRO_DATAREG;
+  int i = 0;
   
+  // Select device
   i2cSetAddress(GYRO_ADDRESS);
-  // Sends address to read from
-  i2cSendByte(0x1D);  
   
-  // Request 6 bytes
-  while(i<6){
-    i2cReciveBytes(1);
-    buff[i] = i2c_data.buff[0];   // Read one byte
+  // Read 6 bytes
+  while(i<6&&reg<GYRO_DATAREG+6){
+    
+    buff[i] = i2cReadByte(reg);
     //printf("gyrohex %x ",buff[i]);
+    reg++;
     i++;
   }
   
   if (i == 6)  // All bytes received?
   {
+    
     gyro[0] = -1 * ((((int) buff[2]) << 8) | buff[3]);    // X axis (internal sensor -y axis)
     gyro[1] = -1 * ((((int) buff[0]) << 8) | buff[1]);    // Y axis (internal sensor -x axis)
     gyro[2] = -1 * ((((int) buff[4]) << 8) | buff[5]);    // Z axis (internal sensor -z axis)
     
     printf("gyro: %f %f %f\n",gyro[0],gyro[1],gyro[2]);
+  
   }
   else
   {
@@ -47,20 +44,22 @@ void Read_Gyro()
 
 void Read_Magn()
 {
-  int i = 0;
+  
   char buff[6];
- 
+  unsigned char reg = MAGN_DATAREG;
+  int i = 0;
+  
+  // Select device
   i2cSetAddress(MAGN_ADDRESS);
-  i2cSendByte(0x03);  		// Send address to read from
-  
-  i2cSetAddress(MAGN_ADDRESS); 
-  // Request 6 bytes
-  i2cReciveBytes(6);
-  
-  while(i<6){ 
-    buff[i] = i2c_data.buff[i];  // Read one byte
+   
+  // Read 6 bytes
+  while(i<6&&reg<MAGN_DATAREG+6){
+    
+    buff[i] = i2cReadByte(reg);
     //printf("magnhex %x ",buff[i]);
+    reg++;
     i++;
+    
   }
   
   if (i == 6)  // All bytes received?
@@ -74,8 +73,6 @@ void Read_Magn()
   }
   else
   {
-    //num_magn_errors++;
-    //if (output_errors)
       printf("!ERR: reading magnetometer");
   }
 }
@@ -83,17 +80,19 @@ void Read_Magn()
 // Reads x, y and z accelerometer registers
 void Read_Accel()
 {
-  int i = 0;
+  char reg = ACCEL_DATAREG;
   char buff[6];
+  int i = 0;
   
-  i2cSetAddress(ACCEL_ADDRESS); 
-  i2cSendByte(0x32);  		// Send address to read from
+  //select device
+  i2cSetAddress(ACCEL_ADDRESS);
   
-  while(i<6)  			// ((Wire.available())&&(i<6))
+  //Read 6 bytes
+  while(i<6&&reg<ACCEL_DATAREG+6)
   {
-    i2cReciveBytes(1);
-    buff[i] = i2c_data.buff[0];  // Read one byte
+    buff[i] = i2cReadByte(reg);  // Read one byte
     //printf("accelhex %x ",buff[i]);
+    reg++;
     i++;
   }
   
@@ -116,32 +115,32 @@ void Read_Accel()
 void accel_init(){
   
   i2cSetAddress(ACCEL_ADDRESS);
-  i2cSendByte(0x2D);  // Power register
-  i2cSendByte(0x08);  // Measurement mode
+  i2cWriteByte(0x2D);  // Power register
+  i2cWriteByte(0x08);  // Measurement mode
   usleep(5000);
   
   i2cSetAddress(ACCEL_ADDRESS);
-  i2cSendByte(0x31);  // Data format register
-  i2cSendByte(0x08);  // Set to full resolution
+  i2cWriteByte(0x31);  // Data format register
+  i2cWriteByte(0x08);  // Set to full resolution
   usleep(5000);
   
   // Because our main loop runs at 50Hz we adjust the output data rate to 50Hz (25Hz bandwidth)
   i2cSetAddress(ACCEL_ADDRESS);
-  i2cSendByte(0x2C);  // Rate
-  i2cSendByte(0x09);  // Set to 50Hz, normal operation
+  i2cWriteByte(0x2C);  // Rate
+  i2cWriteByte(0x09);  // Set to 50Hz, normal operation
   usleep(5000);
 }
 
 void magn_init(){
   
   i2cSetAddress(MAGN_ADDRESS);
-  i2cSendByte(0x02); 
-  i2cSendByte(0x00);  // Set continuous mode (default 10Hz)
+  i2cWriteByte(0x02); 
+  i2cWriteByte(0x00);  // Set continuous mode (default 10Hz)
   usleep(5000);
 
   i2cSetAddress(MAGN_ADDRESS);
-  i2cSendByte(0x00);
-  i2cSendByte(0b00011000);  // Set 50Hz
+  i2cWriteByte(0x00);
+  i2cWriteByte(0b00011000);  // Set 50Hz
   usleep(5000);
 }
 
@@ -149,27 +148,27 @@ void gyro_init(){
   
   // Power up reset defaults
   i2cSetAddress(GYRO_ADDRESS);
-  i2cSendByte(0x3E);
-  i2cSendByte(0x80);
+  i2cWriteByte(0x3E);
+  i2cWriteByte(0x80);
   usleep(5000);
   
   // Select full-scale range of the gyro sensors
   // Set LP filter bandwidth to 42Hz
   i2cSetAddress(GYRO_ADDRESS);
-  i2cSendByte(0x16);
-  i2cSendByte(0x1B);  // DLPF_CFG = 3, FS_SEL = 3
+  i2cWriteByte(0x16);
+  i2cWriteByte(0x1B);  // DLPF_CFG = 3, FS_SEL = 3
   usleep(5000);
   
-  // Set sample rato to 50Hz
+  // Set sample rate to 50Hz
   i2cSetAddress(GYRO_ADDRESS);
-  i2cSendByte(0x15);
-  i2cSendByte(0x0A);  //  SMPLRT_DIV = 10 (50Hz)
+  i2cWriteByte(0x15);
+  i2cWriteByte(0x0A);  //  SMPLRT_DIV = 10 (50Hz)
   usleep(5000);
 
   // Set clock to PLL with z gyro reference
   i2cSetAddress(GYRO_ADDRESS);
-  i2cSendByte(0x3E);
-  i2cSendByte(0x00);
+  i2cWriteByte(0x3E);
+  i2cWriteByte(0x00);
   usleep(5000);
 }
 
