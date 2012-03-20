@@ -14,10 +14,27 @@ typedef struct i2c_data_s{
 
 static i2c_data_t i2c_data;
 
-void i2cWriteByte(unsigned char byte){
-  
+void i2cWriteByte(unsigned char reg, unsigned char byte){
+    
+    //buffer
+    char buff[2];
+    buff[0] = reg;
+    buff[1] = byte;
+    
     //send
-    i2c_data.sent = write(i2c_data.fh, &byte, 1);
+    i2c_data.sent = write(i2c_data.fh, buff, 2);
+    
+    //verify sent
+    if (i2c_data.sent != 2) {
+      perror("write");
+      //printf("& the buffer is messed up\n");
+    }
+}
+
+void i2cWriteAddress(unsigned char reg){    
+
+    //send
+    i2c_data.sent = write(i2c_data.fh, &reg, 1);
     
     //verify sent
     if (i2c_data.sent != 1) {
@@ -31,7 +48,7 @@ char i2cReadByte(unsigned char reg){
   unsigned char buff;
   
   //select register
-  i2cWriteByte(reg);
+  i2cWriteAddress(reg);
 
   //clear buffer
   memset(&buff, 0, sizeof(buff));

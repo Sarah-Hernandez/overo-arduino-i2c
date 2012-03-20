@@ -21,8 +21,8 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifndef overo-i2c_h
-#define overo-i2c_h
+#ifndef overoi2c_h
+#define overoi2c_h
 
 #include <stdio.h>
 #include <string.h>
@@ -39,7 +39,7 @@
 //limit defined by arduino wire library.
 #define BUFFER_LENGTH 32
 
-void i2cWriteByte(unsigned char byte);
+void i2cWriteByte(unsigned char reg,unsigned char byte);
 char i2cReadByte(unsigned char reg);
 void i2cSetAddress(int address);
 void i2cInit(char* i2c_device);

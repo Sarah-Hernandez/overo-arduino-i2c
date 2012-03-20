@@ -39,13 +39,13 @@
 //limit defined by arduino wire library.
 #define BUFFER_LENGTH 32
 
-void i2cWriteByte(unsigned char byte);
+void i2cWriteByte(unsigned char reg,unsigned char byte);
 char i2cReadByte(unsigned char reg);
 void i2cSetAddress(int address);
 void i2cInit(char* i2c_device);
 void i2cDestroy();
 
-//stuff don't work.
+//blerg
 void i2cSend(char* msg);
 void i2cRecive();
 void i2cReciveBytes(int bytes);
