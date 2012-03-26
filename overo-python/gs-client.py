@@ -1,11 +1,11 @@
 import socket
 import Tkinter
 import platform
-
-LEFT_COMMAND = '40'
-RIGHT_COMMAND = '41'
-FW_COMMAND = '42'
-BACK_COMMAND = '43'
+import os
+import subprocess
+import shlex
+import time
+from threading import Timer
 
 MOTOR_LEFT = '33'
 MOTOR_RIGHT = '38'
@@ -15,6 +15,17 @@ KILL_MOTORS = '37'
 
 LIFT_OFF = '38'
 MANUAL_MODE = '39'
+LAND = '46'
+
+LEFT_COMMAND = '40'
+RIGHT_COMMAND = '41'
+FW_COMMAND = '42'
+BACK_COMMAND = '43'
+
+VIDEOSTART = '44'
+VIDEOSTOP = '45'
+VIDEOENABLED = False
+VIDEOPIPELINE = "/usr/bin/gst-launch-0.10 -v udpsrc port=4000 caps='application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264' ! rtph264depay ! ffdec_h264 ! xvimagesink sync=false"
 
 INIT_PWM = '50'
 
@@ -62,8 +73,10 @@ class gs_gui(Tkinter.Tk):
     buttonLeft = Tkinter.Button(self,text=" <-Left  ",command=self.OnLeftClick)
     buttonRight = Tkinter.Button(self,text="Right->  ",command=self.OnRightClick)
     buttonLiftOff = Tkinter.Button(self,text=" Hover ",command=self.OnLiftOffClick)
-    buttonLand = Tkinter.Button(self,text="  Manual   ",command=self.OnLandClick)
+    buttonManual = Tkinter.Button(self,text="  Manual   ",command=self.OnManualClick)
+    buttonLand = Tkinter.Button(self,text="  Land  ",command=self.OnLandClick)    
     buttonKill = Tkinter.Button(self,text=" KillAll ",command=self.OnKillAllClick)
+    buttonVideo = Tkinter.Button(self,text=" Video ",command=self.OnVideoClick)
     
     #add labels
     self.labelVariable = Tkinter.StringVar()
@@ -85,8 +98,11 @@ class gs_gui(Tkinter.Tk):
     buttonRight.grid(column=1,row=3,columnspan=1,sticky='EW')
     buttonBack.grid(column=0,row=4,columnspan=2,sticky='EW')
     buttonLiftOff.grid(column=0,row=5,columnspan=2,sticky='EW')
-    buttonLand.grid(column=0,row=6,columnspan=2,sticky='EW')
-    buttonKill.grid(column=0,row=7,columnspan=2,sticky='EW')
+    buttonManual.grid(column=0,row=6,columnspan=2,sticky='EW')
+    buttonLand.grid(column=0,row=7,columnspan=2,sticky='EW')
+    buttonKill.grid(column=0,row=8,columnspan=2,sticky='EW')
+    buttonVideo.grid(column=0,row=9,columnspan=2,sticky='EW')
+    
     
     #Tell the layout manager to resize columns when the window
     #is resized
@@ -108,7 +124,7 @@ class gs_gui(Tkinter.Tk):
       self.bind("<XF86Launch1>",self.LiftOff)
       self.bind("<XF86Launch2>",self.Land)
     except Exception:
-      print "your platform doesn support XF86 key bindings"
+      print "Your platform does not support XF86 key bindings"
       pass
     
     self.bind("<KeyRelease-Up>",self.KillAll)
@@ -123,6 +139,8 @@ class gs_gui(Tkinter.Tk):
     # Open Port
     self.HOST, self.PORT = AUTOPILOT_IP, AUTOPILOT_PORT
     self.PWM = INIT_PWM
+    self.VIDEOENABLED = VIDEOENABLED
+    self.video_process = 0
     # SOCK_DGRAM is the socket type to use for UDP sockets
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     self.byteSent = 0
@@ -163,13 +181,21 @@ class gs_gui(Tkinter.Tk):
     self.modeVariable.set("Hover")
     self.sendCMD(LIFT_OFF)
     
-  def Land(self,event):
+  def Manual(self,event):
     self.modeVariable.set("Manual")
     self.sendCMD(MANUAL_MODE)
     
+  def Land(self,event):
+    self.modeVariable.set("Land")
+    self.sendCMD(LAND)
+  
   def OnLiftOffClick(self):
     #self.sendCMD(MOTOR_LEFT_RIGHT)
     self.LiftOff(self)
+    
+  def OnManualClick(self):
+    #self.sendCMD(MOTOR_LEFT_RIGHT)
+    self.Manual(self)
     
   def OnLandClick(self):
     #self.sendCMD(MOTOR_LEFT_RIGHT)
@@ -178,6 +204,9 @@ class gs_gui(Tkinter.Tk):
   def OnKillAllClick(self):
     #self.sendCMD(MOTOR_LEFT_RIGHT)
     self.KillAll(self)
+    
+  def OnVideoClick(self):
+    self.ToggleVideo(self);
   
   def OnFwClick(self):
     #self.sendCMD(MOTOR_LEFT_RIGHT)
@@ -212,6 +241,27 @@ class gs_gui(Tkinter.Tk):
       print 'click event'
     self.afterId = None
     self.sendCMD(KILL_MOTORS)
+    
+  def start_video(self):
+    self.sendCMD(VIDEOSTART)
+    
+  def ToggleVideo(self,event):
+    if self.VIDEOENABLED:
+      self.sendCMD(VIDEOSTOP)
+      if self.video_process != 0:
+	subprocess.call(["/bin/kill",str(self.video_process.pid)])
+      #TODO check if process has really been killed before setting flag
+      self.video_process = 0
+      self.VIDEOENABLED = False
+    else:
+      args = shlex.split(VIDEOPIPELINE)
+      print args
+      self.video_process = subprocess.Popen(args)
+      print self.video_process.pid
+      #time.sleep(5)
+      t = Timer(5.0,self.start_video)
+      t.start()
+      self.VIDEOENABLED = True
    
   def sendCMD(self,cmd1):
     if(cmd1 != self.last_cmd):

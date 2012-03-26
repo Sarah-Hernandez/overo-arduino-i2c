@@ -22,7 +22,7 @@ void Read_Gyro()
   while(i<6&&reg<GYRO_DATAREG+6){
     
     buff[i] = i2cReadByte(reg);
-    //printf("gyro[%x]:%x ",reg,buff[i]);
+    printf("gyro[%x]:%x ",reg,buff[i]);
     //usleep(5000);
     reg++;
     i++; 
@@ -59,10 +59,10 @@ void Read_Gyro()
         //XXXX is the maximum value of an X-bit signed register
         //TODO: Scale based on Max value being read.
         //gyro2[k] = (float)16 * (gyro2[k]/(0x1FF));
-	//printf("\n%f\n",gyro[k]);
+	printf("\n%f\n",gyro[k]);
     }
     
-   // printf("gyro: %f %f %f\n",gyro[0],gyro[1],gyro[2]);
+    printf("\ngyro: %f %f %f\n",gyro[0],gyro[1],gyro[2]);
   
   }
   else
@@ -86,7 +86,7 @@ void Read_Magn()
   while(i<6&&reg<MAGN_DATAREG+6){
     
     buff[i] = i2cReadByte(reg);
-    //printf("magn[%x]:%x ",reg,buff[i]);
+    printf("magn[%x]:%x ",reg,buff[i]);
     //usleep(5000);
     reg++;
     i++;
@@ -125,7 +125,7 @@ void Read_Magn()
 	//printf("\n%f\n",magnetom[k]);
     }
     
-   // printf("magn: %f %f %f\n",magnetom[0],magnetom[1],magnetom[2]);
+    printf("\nmagn: %f %f %f\n",magnetom[0],magnetom[1],magnetom[2]);
   }
   else
   {
@@ -148,7 +148,7 @@ void Read_Accel()
   while(i<6&&reg<ACCEL_DATAREG+6)
   {
     buff[i] = i2cReadByte(reg);  // Read one byte
-   // printf("accl[%x]:%x ",reg,buff[i]);
+    printf("accl[%x]:%x ",reg,buff[i]);
     //usleep(5000);
     reg++;
     i++;
@@ -164,9 +164,9 @@ void Read_Accel()
     //accel[2] = ((((int) buff[5]) << 8) | buff[4]);  // Z axis (internal sensor z axis)
     
     // MSB byte first, then LSB; Y and Z reversed: X, Z, Y
-    raw[0] = ((buff[3]) << 8) | buff[2];    // X axis (internal sensor -y axis)
-    raw[1] = ((buff[1]) << 8) | buff[0];    // Y axis (internal sensor -x axis)
-    raw[2] = ((buff[5]) << 8) | buff[4];    // Z axis (internal sensor -z axis)
+    raw[0] = ((buff[0]) << 8) | buff[1];    // X axis (internal sensor -y axis)
+    raw[1] = ((buff[4]) << 8) | buff[5];    // Y axis (internal sensor -x axis)
+    raw[2] = ((buff[2]) << 8) | buff[3];    // Z axis (internal sensor -z axis)
     
     //Manual 2s-Complement Conversion.
     int k;
@@ -185,11 +185,11 @@ void Read_Accel()
 	}
         //1FF is the maximum value of a 10-bit signed register
         //TODO: I thought we had 13bit resolution ?
-        //accel[k] = (float)16 * (accel[k]/(0x1FF));
+        accel[k] = (float)16 * (accel[k]/(0x1FF));
 	//printf("\n%f\n",accel[k]);
     }
     
-   // printf("\naccl: %f %f %f\n",accel[0],accel[1],accel[2]);
+    printf("\naccl: %f %f %f\n",accel[0],accel[1],accel[2]);
   }
   else
   {
@@ -211,7 +211,7 @@ void accel_init(){
   // Because our main loop runs at 50Hz we adjust the output data rate to 50Hz (25Hz bandwidth)
   // Rate
   // Set to 50Hz, normal operation
-  i2cWriteByte(0x2C,0x0A);
+  i2cWriteByte(0x2C,0x0C);
 }
 
 void magn_init(){
@@ -247,24 +247,24 @@ void gyro_init(){
  
 }
 
-// int main(int argc, char **argv)
-// { 
-//     i2cInit(I2C_BUS_DEVICE);
-//         
-//     accel_init();
-//     gyro_init();
-//     magn_init();
-//         
-//     int i = 0;
-//     while(i<10){      
-//       Read_Accel();
-//       Read_Gyro();
-//       Read_Magn();
-//       usleep(80000);
-//       //i++;
-//     }
-//     
-//     i2cDestroy();
-// 
-//     return 0;
-// }
+int main(int argc, char **argv)
+{ 
+    i2cInit(I2C_BUS_DEVICE);
+        
+    accel_init();
+    gyro_init();
+    magn_init();
+        
+    int i = 0;
+    while(i<10){      
+      Read_Accel();
+      Read_Gyro();
+      Read_Magn();
+      usleep(80000);
+      //i++;
+    }
+    
+    i2cDestroy();
+
+    return 0;
+}

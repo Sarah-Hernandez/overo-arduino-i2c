@@ -23,6 +23,9 @@ $(TARGET) :
 test:
 	gcc sensors.c overo-i2c.c -o test
 
+razr:
+	$(CC) $(CFLAGS) -I $(INCDIR) -I . -L $(LIBDIR) Razor_AHRS.c dcm.c math.c output.c sensors.c overo-i2c.c -o razr
+
 install:
 	scp $(TARGET) root@192.168.23.3:/home/root
 

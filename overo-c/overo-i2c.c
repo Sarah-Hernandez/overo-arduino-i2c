@@ -53,6 +53,8 @@ char i2cReadByte(unsigned char reg){
   //clear buffer
   memset(&buff, 0, sizeof(buff));
   
+  //usleep(5000);
+  
   //read one byte
   i2c_data.rcvd = read(i2c_data.fh, &buff, 1);
 
